@@ -1,0 +1,60 @@
+package com.huaweidong.test;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.BasicConfigurator;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+
+public class SocketServer6 {
+
+    static {
+        BasicConfigurator.configure();
+    }
+
+    private static Object xWait = new Object();
+
+    /**
+     * 日志
+     */
+    private static final Log LOGGER = LogFactory.getLog(SocketServer6.class);
+
+    public static void main(String[] args) throws Exception{
+        ServerSocket serverSocket = null;
+
+        try {
+            serverSocket = new ServerSocket(3532);
+            serverSocket.setSoTimeout(1000);
+
+            while(true) {
+                Socket socket = null;
+                try {
+                    socket = serverSocket.accept();
+                } catch (SocketTimeoutException e1) {
+                    //===========================================================
+                    //      执行到这里，说明本次accept没有接收到任何数据报文
+                    //      主线程在这里就可以做一些事情，记为X
+                    //===========================================================
+                    synchronized (SocketServer6.xWait) {
+                        SocketServer6.LOGGER.info("这次没有从底层接收到任务数据报文，等待10毫秒，模拟事件X的处理时间");
+                        SocketServer6.xWait.wait(10);
+                    }
+                    continue;
+                }
+
+                SocketServerThread2 socketServerThread = new SocketServerThread2(socket);
+                new Thread(socketServerThread).start();
+            }
+        } catch(Exception e) {
+            SocketServer6.LOGGER.error(e.getMessage(), e);
+        } finally {
+            if(serverSocket != null) {
+                serverSocket.close();
+            }
+        }
+    }
+}
